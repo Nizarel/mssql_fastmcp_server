@@ -18,8 +18,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    "fastmcp>=2.9.2",
     "pymssql>=2.2.8",
+    "pydantic>=2.0.0",
 ]
 
 [tool.mcp]

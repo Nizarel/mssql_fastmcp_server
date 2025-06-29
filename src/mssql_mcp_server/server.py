@@ -1,264 +1,301 @@
-import asyncio
+"""
+MSSQL MCP Server using FastMCP 2.9.2.
+
+A Model Context Protocol server that provides secure access to Microsoft SQL Server databases.
+Built with FastMCP for improved performance and developer experience.
+"""
+
 import logging
-import os
-import re
-import pymssql
-from mcp.server import Server
-from mcp.types import Resource, Tool, TextContent
-from pydantic import AnyUrl
+from typing import Any, List
+import asyncio
+from fastmcp import FastMCP, Context
+
+from .config import load_database_config, load_server_config
+from .database import DatabaseManager, DatabaseError, SecurityError
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("mssql_mcp_server")
+logger = logging.getLogger(__name__)
 
-def validate_table_name(table_name: str) -> str:
-    """Validate and escape table name to prevent SQL injection."""
-    # Allow only alphanumeric, underscore, and dot (for schema.table)
-    if not re.match(r'^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)?$', table_name):
-        raise ValueError(f"Invalid table name: {table_name}")
-    
-    # Split schema and table if present
-    parts = table_name.split('.')
-    if len(parts) == 2:
-        # Escape both schema and table name
-        return f"[{parts[0]}].[{parts[1]}]"
-    else:
-        # Just table name
-        return f"[{table_name}]"
+# Global variables for lazy initialization
+db_config = None
+server_config = None
+db_manager = None
 
-def get_db_config():
-    """Get database configuration from environment variables."""
-    # Basic configuration
-    server = os.getenv("MSSQL_SERVER", "localhost")
-    logger.info(f"MSSQL_SERVER environment variable: {os.getenv('MSSQL_SERVER', 'NOT SET')}")
-    logger.info(f"Using server: {server}")
+def get_db_manager():
+    """Get database manager with lazy initialization."""
+    global db_config, server_config, db_manager
     
-    # Handle LocalDB connections (Issue #6)
-    # LocalDB format: (localdb)\instancename
-    if server.startswith("(localdb)\\"):
-        # For LocalDB, pymssql needs special formatting
-        # Convert (localdb)\MSSQLLocalDB to localhost\MSSQLLocalDB with dynamic port
-        instance_name = server.replace("(localdb)\\", "")
-        server = f".\\{instance_name}"
-        logger.info(f"Detected LocalDB connection, converted to: {server}")
-    
-    config = {
-        "server": server,
-        "user": os.getenv("MSSQL_USER"),
-        "password": os.getenv("MSSQL_PASSWORD"),
-        "database": os.getenv("MSSQL_DATABASE"),
-        "port": os.getenv("MSSQL_PORT", "1433"),  # Default MSSQL port
-    }    
-    # Port support (Issue #8)
-    port = os.getenv("MSSQL_PORT")
-    if port:
+    if db_manager is None:
         try:
-            config["port"] = int(port)
-        except ValueError:
-            logger.warning(f"Invalid MSSQL_PORT value: {port}. Using default port.")
+            db_config = load_database_config()
+            server_config = load_server_config()
+            db_manager = DatabaseManager(db_config)
+            logger.info(f"Database config loaded: {db_manager.get_connection_info()}")
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}")
+            raise
     
-    # Encryption settings for Azure SQL (Issue #11)
-    # Check if we're connecting to Azure SQL
-    if config["server"] and ".database.windows.net" in config["server"]:
-        config["tds_version"] = "7.4"  # Required for Azure SQL
-        # Azure SQL requires encryption
-        if os.getenv("MSSQL_ENCRYPT", "true").lower() == "true":
-            config["encrypt"] = True
-    else:
-        # For non-Azure connections, respect the MSSQL_ENCRYPT setting
-        encrypt_str = os.getenv("MSSQL_ENCRYPT", "false")
-        config["encrypt"] = encrypt_str.lower() == "true"
-    
-    # Windows Authentication support (Issue #7)
-    use_windows_auth = os.getenv("MSSQL_WINDOWS_AUTH", "false").lower() == "true"
-    
-    if use_windows_auth:
-        # For Windows authentication, user and password are not required
-        if not config["database"]:
-            logger.error("MSSQL_DATABASE is required")
-            raise ValueError("Missing required database configuration")
-        # Remove user and password for Windows auth
-        config.pop("user", None)
-        config.pop("password", None)
-        logger.info("Using Windows Authentication")
-    else:
-        # SQL Authentication - user and password are required
-        if not all([config["user"], config["password"], config["database"]]):
-            logger.error("Missing required database configuration. Please check environment variables:")
-            logger.error("MSSQL_USER, MSSQL_PASSWORD, and MSSQL_DATABASE are required")
-            raise ValueError("Missing required database configuration")
-    
-    return config
+    return db_manager, server_config
 
-def get_command():
-    """Get the command to execute SQL queries."""
-    return os.getenv("MSSQL_COMMAND", "execute_sql")
+# Initialize FastMCP server with improved configuration
+mcp = FastMCP(
+    name="Microsoft SQL Server MCP",
+    instructions="Provides secure access to Microsoft SQL Server databases with tools for querying, schema inspection, and data analysis."
+)
 
-# Initialize server
-app = Server("mssql_mcp_server")
 
-@app.list_resources()
-async def list_resources() -> list[Resource]:
-    """List SQL Server tables as resources."""
-    config = get_db_config()
+@mcp.resource("mssql://tables", name="Database Tables", description="List all available tables in the database")
+async def list_tables(ctx: Context) -> str:
+    """List all available tables in the database."""
     try:
-        conn = pymssql.connect(**config)
-        cursor = conn.cursor()
-        # Query to get user tables from the current database
-        cursor.execute("""
-            SELECT TABLE_NAME 
-            FROM INFORMATION_SCHEMA.TABLES 
-            WHERE TABLE_TYPE = 'BASE TABLE'
-        """)
-        tables = cursor.fetchall()
-        logger.info(f"Found tables: {tables}")
+        await ctx.info("Retrieving list of database tables")
+        db_manager, _ = get_db_manager()
+        tables = await db_manager.get_tables()
         
-        resources = []
-        for table in tables:
-            resources.append(
-                Resource(
-                    uri=f"mssql://{table[0]}/data",
-                    name=f"Table: {table[0]}",
-                    mimeType="text/plain",
-                    description=f"Data in table: {table[0]}"
-                )
-            )
-        cursor.close()
-        conn.close()
-        return resources
-    except Exception as e:
-        logger.error(f"Failed to list resources: {str(e)}")
-        return []
+        if not tables:
+            await ctx.warning("No tables found in the database")
+            return "No tables found in the database."
+        
+        await ctx.info(f"Found {len(tables)} tables")
+        result = ["Available tables:"]
+        result.extend([f"- {table}" for table in tables])
+        return "\n".join(result)
+        
+    except DatabaseError as e:
+        await ctx.error(f"Failed to list tables: {e}")
+        return f"Error listing tables: {e}"
 
-@app.read_resource()
-async def read_resource(uri: AnyUrl) -> str:
-    """Read table contents."""
-    config = get_db_config()
-    uri_str = str(uri)
-    logger.info(f"Reading resource: {uri_str}")
+
+@mcp.resource("mssql://table/{table_name}", name="Table Data", description="Read data from a specific table")
+async def read_table(table_name: str, ctx: Context) -> str:
+    """
+    Read data from a specific table.
     
-    if not uri_str.startswith("mssql://"):
-        raise ValueError(f"Invalid URI scheme: {uri_str}")
+    Args:
+        table_name: Name of the table to read
+        ctx: FastMCP context for logging and progress reporting
         
-    parts = uri_str[8:].split('/')
-    table = parts[0]
-    
+    Returns:
+        Table data in CSV format
+    """
     try:
-        # Validate table name to prevent SQL injection
-        safe_table = validate_table_name(table)
+        await ctx.info(f"Reading data from table: {table_name}")
+        await ctx.report_progress(0, 100, "Starting table read")
         
-        conn = pymssql.connect(**config)
-        cursor = conn.cursor()
-        # Use TOP 100 for MSSQL (equivalent to LIMIT in MySQL)
-        cursor.execute(f"SELECT TOP 100 * FROM {safe_table}")
-        columns = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
-        result = [",".join(map(str, row)) for row in rows]
-        cursor.close()
-        conn.close()
-        return "\n".join([",".join(columns)] + result)
-                
-    except Exception as e:
-        logger.error(f"Database error reading resource {uri}: {str(e)}")
-        raise RuntimeError(f"Database error: {str(e)}")
+        db_manager, server_config = get_db_manager()
+        columns, rows = await db_manager.read_table_data(table_name, server_config.max_rows)
+        
+        await ctx.report_progress(50, 100, "Processing table data")
+        
+        if not rows:
+            await ctx.warning(f"Table '{table_name}' is empty or does not exist")
+            return f"Table '{table_name}' is empty or does not exist."
+        
+        # Format as CSV
+        result = [",".join(columns)]
+        result.extend([",".join(str(cell) if cell is not None else "" for cell in row) for row in rows])
+        
+        await ctx.report_progress(100, 100, "Table read completed")
+        
+        footer = f"\n\nShowing {len(rows)} rows (limit: {server_config.max_rows})"
+        await ctx.info(f"Successfully read {len(rows)} rows from table {table_name}")
+        
+        return "\n".join(result) + footer
+        
+    except SecurityError as e:
+        await ctx.error(f"Security error reading table {table_name}: {e}")
+        return f"Security error: {e}"
+    except DatabaseError as e:
+        await ctx.error(f"Database error reading table {table_name}: {e}")
+        return f"Database error: {e}"
 
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    """List available SQL Server tools."""
-    command = get_command()
-    logger.info("Listing tools...")
-    return [
-        Tool(
-            name=command,
-            description="Execute an SQL query on the SQL Server",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The SQL query to execute"
-                    }
-                },
-                "required": ["query"]
-            }
-        )
-    ]
 
-@app.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    """Execute SQL commands."""
-    config = get_db_config()
-    command = get_command()
-    logger.info(f"Calling tool: {name} with arguments: {arguments}")
+@mcp.tool()
+async def execute_sql(query: str, ctx: Context) -> str:
+    """
+    Execute a SQL query on the database.
     
-    if name != command:
-        raise ValueError(f"Unknown tool: {name}")
-    
-    query = arguments.get("query")
-    if not query:
-        raise ValueError("Query is required")
-    
+    Args:
+        query: SQL query to execute
+        ctx: FastMCP context for logging and progress reporting
+        
+    Returns:
+        Query results or execution status
+    """
     try:
-        conn = pymssql.connect(**config)
-        cursor = conn.cursor()
-        cursor.execute(query)
+        await ctx.info(f"Executing SQL query: {query[:100]}...")
+        await ctx.report_progress(0, 100, "Validating query")
         
-        # Special handling for table listing
-        if query.strip().upper().startswith("SELECT") and "INFORMATION_SCHEMA.TABLES" in query.upper():
-            tables = cursor.fetchall()
-            result = ["Tables_in_" + config["database"]]  # Header
-            result.extend([table[0] for table in tables])
-            cursor.close()
-            conn.close()
-            return [TextContent(type="text", text="\n".join(result))]
+        db_manager, _ = get_db_manager()
+        result = await db_manager.execute_query(query)
         
-        # Regular SELECT queries
-        elif query.strip().upper().startswith("SELECT"):
-            columns = [desc[0] for desc in cursor.description]
-            rows = cursor.fetchall()
-            result = [",".join(map(str, row)) for row in rows]
-            cursor.close()
-            conn.close()
-            return [TextContent(type="text", text="\n".join([",".join(columns)] + result))]
+        await ctx.report_progress(50, 100, "Processing results")
         
-        # Non-SELECT queries
+        if result["type"] == "select":
+            if not result["rows"]:
+                await ctx.info("Query executed successfully but returned no rows")
+                return "Query executed successfully but returned no rows."
+            
+            # Format SELECT results as CSV
+            output = [",".join(result["columns"])]
+            output.extend([
+                ",".join(str(cell) if cell is not None else "" for cell in row) 
+                for row in result["rows"]
+            ])
+            
+            footer = f"\n\nReturned {result['row_count']} rows"
+            await ctx.info(f"Query returned {result['row_count']} rows")
+            await ctx.report_progress(100, 100, "Query completed")
+            return "\n".join(output) + footer
+        
         else:
-            conn.commit()
-            affected_rows = cursor.rowcount
-            cursor.close()
-            conn.close()
-            return [TextContent(type="text", text=f"Query executed successfully. Rows affected: {affected_rows}")]
-                
-    except Exception as e:
-        logger.error(f"Error executing SQL '{query}': {e}")
-        return [TextContent(type="text", text=f"Error executing query: {str(e)}")]
+            # Modification query
+            await ctx.info(f"Query executed successfully. {result['message']}")
+            await ctx.report_progress(100, 100, "Query completed")
+            return result["message"]
+            
+    except SecurityError as e:
+        await ctx.warning(f"Security error executing query: {e}")
+        return f"Security error: {e}"
+    except DatabaseError as e:
+        await ctx.error(f"Database error executing query: {e}")
+        return f"Database error: {e}"
+
+
+@mcp.tool()
+async def get_table_schema(table_name: str, ctx: Context) -> str:
+    """
+    Get the schema information for a specific table.
+    
+    Args:
+        table_name: Name of the table to describe
+        ctx: FastMCP context for logging and progress reporting
+        
+    Returns:
+        Table schema information
+    """
+    try:
+        await ctx.info(f"Retrieving schema for table: {table_name}")
+        
+        # Validate table name first
+        from .database import validate_table_name
+        safe_table = validate_table_name(table_name)
+        
+        # Query for table schema
+        schema_query = f"""
+        SELECT 
+            COLUMN_NAME,
+            DATA_TYPE,
+            IS_NULLABLE,
+            COLUMN_DEFAULT,
+            CHARACTER_MAXIMUM_LENGTH,
+            NUMERIC_PRECISION,
+            NUMERIC_SCALE
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_NAME = '{table_name.split('.')[-1]}'
+        ORDER BY ORDINAL_POSITION
+        """
+        
+        db_manager, _ = get_db_manager()
+        result = await db_manager.execute_query(schema_query)
+        
+        if not result["rows"]:
+            await ctx.warning(f"Table '{table_name}' not found or has no columns")
+            return f"Table '{table_name}' not found or has no columns."
+        
+        # Format schema information
+        output = [f"Schema for table '{table_name}':", ""]
+        output.append("Column Name | Data Type | Nullable | Default | Max Length | Precision | Scale")
+        output.append("-" * 80)
+        
+        for row in result["rows"]:
+            col_name, data_type, nullable, default, max_len, precision, scale = row
+            max_len = max_len if max_len is not None else ""
+            precision = precision if precision is not None else ""
+            scale = scale if scale is not None else ""
+            default = default if default is not None else ""
+            
+            output.append(f"{col_name} | {data_type} | {nullable} | {default} | {max_len} | {precision} | {scale}")
+        
+        await ctx.info(f"Retrieved schema for table {table_name} with {len(result['rows'])} columns")
+        return "\n".join(output)
+        
+    except SecurityError as e:
+        await ctx.warning(f"Security error getting schema for {table_name}: {e}")
+        return f"Security error: {e}"
+    except DatabaseError as e:
+        await ctx.error(f"Database error getting schema for {table_name}: {e}")
+        return f"Database error: {e}"
+
+
+@mcp.tool()
+async def list_databases(ctx: Context) -> str:
+    """
+    List all databases on the server (requires appropriate permissions).
+    
+    Args:
+        ctx: FastMCP context for logging and progress reporting
+        
+    Returns:
+        List of available databases
+    """
+    try:
+        await ctx.info("Listing available databases")
+        
+        query = """
+        SELECT name 
+        FROM sys.databases 
+        WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')
+        ORDER BY name
+        """
+        
+        db_manager, _ = get_db_manager()
+        result = await db_manager.execute_query(query)
+        
+        if not result["rows"]:
+            await ctx.warning("No user databases found or insufficient permissions")
+            return "No user databases found or insufficient permissions."
+        
+        output = ["Available databases:"]
+        output.extend([f"- {row[0]}" for row in result["rows"]])
+        
+        await ctx.info(f"Found {len(result['rows'])} user databases")
+        return "\n".join(output)
+        
+    except DatabaseError as e:
+        await ctx.error(f"Database error listing databases: {e}")
+        return f"Database error: {e}"
+
 
 async def main():
     """Main entry point to run the MCP server."""
-    from mcp.server.stdio import stdio_server
+    logger.info("Starting Microsoft SQL Server MCP server with FastMCP...")
     
-    logger.info("Starting MSSQL MCP server...")
-    config = get_db_config()
-    # Log connection info without exposing sensitive data
-    server_info = config['server']
-    if 'port' in config:
-        server_info += f":{config['port']}"
-    user_info = config.get('user', 'Windows Auth')
-    logger.info(f"Database config: {server_info}/{config['database']} as {user_info}")
+    try:
+        # Initialize database manager
+        db_manager, server_config = get_db_manager()
+        logger.info(f"Server configuration: Command='{server_config.command_name}', MaxRows={server_config.max_rows}")
+        
+        # Test database connection
+        tables = await db_manager.get_tables()
+        logger.info(f"Database connection successful. Found {len(tables)} tables.")
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {e}")
+        raise
     
-    async with stdio_server() as (read_stream, write_stream):
-        try:
-            await app.run(
-                read_stream,
-                write_stream,
-                app.create_initialization_options()
-            )
-        except Exception as e:
-            logger.error(f"Server error: {str(e)}", exc_info=True)
-            raise
+    # Run the server
+    await mcp.run()
+
+
+def get_mcp_server():
+    """Get the FastMCP server instance for testing."""
+    return mcp
+
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
