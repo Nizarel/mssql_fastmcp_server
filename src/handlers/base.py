@@ -58,12 +58,13 @@ class BaseHandler:
             return response.to_json()
         elif isinstance(data, dict) and "columns" in data and "rows" in data:
             # Table data
+            display_rows = min(len(data["rows"]), self.app_config.server.max_rows)
             if output_format == OutputFormat.CSV:
                 return TableFormatter.to_csv(data["columns"], data["rows"])
             elif output_format == OutputFormat.MARKDOWN:
-                return TableFormatter.to_markdown(data["columns"], data["rows"])
+                return TableFormatter.to_markdown(data["columns"], data["rows"], display_rows)
             elif output_format == OutputFormat.TABLE:
-                return TableFormatter.to_markdown(data["columns"], data["rows"])
+                return TableFormatter.to_markdown(data["columns"], data["rows"], display_rows)
         
         # Default to string representation
         return str(data)

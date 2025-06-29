@@ -71,15 +71,31 @@ async def initialize_server(profile: Optional[str] = None, config_file: Optional
     app_config = load_config(profile, config_file)
     
     # Configure logging
+    log_level = app_config.server.log_level
+    if hasattr(log_level, 'value'):
+        # It's an enum
+        log_level_str = log_level.value
+    else:
+        # It's already a string
+        log_level_str = str(log_level)
+    
     logging.basicConfig(
-        level=getattr(logging, app_config.server.log_level.value),
+        level=getattr(logging, log_level_str),
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         stream=sys.stdout
     )
     logger = logging.getLogger(__name__)
     
     logger.info("Initializing MSSQL MCP Server with modular architecture")
-    logger.info(f"Transport: {app_config.server.transport.value}")
+    
+    # Safe transport value extraction
+    transport_value = app_config.server.transport
+    if hasattr(transport_value, 'value'):
+        transport_str = transport_value.value
+    else:
+        transport_str = str(transport_value)
+    
+    logger.info(f"Transport: {transport_str}")
     logger.info(f"Features: caching={app_config.server.enable_caching}, "
                f"rate_limiting={app_config.server.enable_rate_limiting}, "
                f"health_checks={app_config.server.enable_health_checks}")
@@ -526,7 +542,14 @@ async def main():
     # Load initial configuration to determine transport
     temp_config = load_config(profile, config_file)
     
-    if temp_config.server.transport == TransportType.SSE:
+    # Safe transport comparison
+    transport = temp_config.server.transport
+    if hasattr(transport, 'value'):
+        transport_value = transport.value
+    else:
+        transport_value = str(transport)
+    
+    if transport_value == "sse" or (hasattr(transport, 'SSE') and transport == transport.SSE):
         await run_sse_server()
     else:
         await run_stdio_server()
@@ -544,10 +567,17 @@ async def health_endpoint():
         if not app_config:
             return {"status": "not_initialized", "error": "Server not initialized"}
         
+        # Safe transport value extraction
+        transport = app_config.server.transport
+        if hasattr(transport, 'value'):
+            transport_str = transport.value
+        else:
+            transport_str = str(transport)
+        
         health_data = {
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
-            "transport": app_config.server.transport.value,
+            "transport": transport_str,
             "architecture": "modular_handlers"
         }
         
