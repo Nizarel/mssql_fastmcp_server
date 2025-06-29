@@ -1,7 +1,0 @@
-Testing flattened structure imports...
-✅ Config imported
-✅ Core database imported
-✅ Base handler imported
-✅ Health handler imported
-
-🎉 All imports working!

@@ -3,7 +3,7 @@
 import logging
 import json
 from typing import Any, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import traceback
 from fastmcp import Context
 
@@ -27,7 +27,7 @@ class StructuredLogger:
     
     def _add_context(self, record: Dict[str, Any], context: Dict[str, Any]):
         """Add context to log record."""
-        record['timestamp'] = datetime.utcnow().isoformat()
+        record['timestamp'] = datetime.now(timezone.utc).isoformat()
         record.update(context)
         return record
     
@@ -58,7 +58,7 @@ class StructuredLogger:
         """Create logging middleware."""
         def middleware(func):
             async def wrapper(ctx: Context, *args, **kwargs):
-                start_time = datetime.utcnow()
+                start_time = datetime.now(timezone.utc)
                 request_id = getattr(ctx, 'request_id', 'unknown')
                 
                 self.info(
@@ -72,7 +72,7 @@ class StructuredLogger:
                 try:
                     result = await func(ctx, *args, **kwargs)
                     
-                    duration = (datetime.utcnow() - start_time).total_seconds()
+                    duration = (datetime.now(timezone.utc) - start_time).total_seconds()
                     self.info(
                         f"Completed {func.__name__}",
                         operation=func.__name__,
@@ -84,7 +84,7 @@ class StructuredLogger:
                     return result
                     
                 except Exception as e:
-                    duration = (datetime.utcnow() - start_time).total_seconds()
+                    duration = (datetime.now(timezone.utc) - start_time).total_seconds()
                     self.error(
                         f"Failed {func.__name__}",
                         exception=e,

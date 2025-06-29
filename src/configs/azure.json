@@ -1,0 +1,38 @@
+{
+  "database": {
+    "server": "testciments.database.windows.net",
+    "database": "ciments-text2sql",
+    "username": "ciment",
+    "password": "cimtext2sql!",
+    "port": 1433,
+    "timeout": 30,
+    "driver": "ODBC Driver 17 for SQL Server",
+    "encrypt": true,
+    "trust_server_certificate": false,
+    "connection_timeout": 30,
+    "command_timeout": 30
+  },
+  "server": {
+    "transport": "stdio",
+    "max_rows": 1000,
+    "query_timeout": 30,
+    "log_level": "INFO",
+    "enable_caching": true,
+    "enable_rate_limiting": true,
+    "enable_health_checks": true,
+    "sse_port": 8080,
+    "cache": {
+      "max_size": 100,
+      "ttl_seconds": 300
+    },
+    "rate_limit": {
+      "requests_per_minute": 60,
+      "burst_limit": 10
+    },
+    "connection_pool": {
+      "min_connections": 1,
+      "max_connections": 5,
+      "connection_timeout": 30
+    }
+  }
+}

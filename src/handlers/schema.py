@@ -1,7 +1,7 @@
 """Schema information handler module."""
 
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from fastmcp import Context
 
 from .base import BaseHandler
@@ -107,7 +107,7 @@ class SchemaHandler(BaseHandler):
                     "column_count": len(result["rows"]),
                     "metadata": {
                         "table_exists": True,
-                        "schema_retrieved_at": datetime.utcnow().isoformat()
+                        "schema_retrieved_at": datetime.now(timezone.utc).isoformat()
                     }
                 }
             

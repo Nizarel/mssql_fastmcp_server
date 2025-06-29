@@ -1,7 +1,7 @@
 """Health check handler."""
 
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from fastmcp import Context
 
 from .base import BaseHandler
@@ -27,7 +27,7 @@ class HealthHandler(BaseHandler):
             
             health_data = {
                 "status": "healthy",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "server_info": {
                     "transport": self.app_config.server.transport.value,
                     "features": {

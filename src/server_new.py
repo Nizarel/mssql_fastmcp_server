@@ -16,9 +16,9 @@ Built with FastMCP and implements modern MCP best practices including:
 import os
 import sys
 import logging
-import asyncio
+import atexit
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastmcp import FastMCP, Context
 
@@ -178,7 +178,8 @@ async def cleanup_components():
     if logger:
         logger.info("Server cleanup completed")
 
-# Cleanup is handled manually for async operations
+# Register cleanup function
+atexit.register(lambda: cleanup_components())
 
 # Create FastMCP server instance
 mcp = FastMCP(
@@ -208,18 +209,18 @@ async def health_check_resource(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "health_check")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await health_handler.check_health(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "health_check", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "health_check", False, duration, error=str(e))
         raise
 
@@ -231,18 +232,18 @@ async def list_tables_resource(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "list_tables")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await tables_handler.list_tables(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_tables", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_tables", False, duration, error=str(e))
         raise
 
@@ -254,18 +255,18 @@ async def read_table_resource(ctx: Context, table_name: str) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "read_table", table_name=table_name)
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await tables_handler.read_table(table_name, ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "read_table", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "read_table", False, duration, error=str(e))
         raise
 
@@ -277,18 +278,18 @@ async def table_schema_resource(ctx: Context, table_name: str) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "table_schema", table_name=table_name)
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await schema_handler.get_table_schema(table_name, ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "table_schema", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "table_schema", False, duration, error=str(e))
         raise
 
@@ -300,18 +301,18 @@ async def list_databases_resource(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "list_databases")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await schema_handler.list_databases(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_databases", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_databases", False, duration, error=str(e))
         raise
 
@@ -333,18 +334,18 @@ async def execute_sql_tool(ctx: Context, query: str, output_format: str = "csv")
     if request_logger:
         await request_logger.log_request(ctx, "execute_sql", query=query[:100])
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await query_handler.execute_sql(query, ctx, output_format)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "execute_sql", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "execute_sql", False, duration, error=str(e))
         raise
 
@@ -364,18 +365,18 @@ async def read_table_tool(ctx: Context, table_name: str, limit: int = 100, offse
     if request_logger:
         await request_logger.log_request(ctx, "read_table_tool", table_name=table_name, limit=limit, offset=offset)
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await tables_handler.read_table(table_name, ctx, limit, offset, output_format)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "read_table_tool", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "read_table_tool", False, duration, error=str(e))
         raise
 
@@ -393,18 +394,18 @@ async def get_table_schema_tool(ctx: Context, table_name: str, output_format: st
     if request_logger:
         await request_logger.log_request(ctx, "get_table_schema", table_name=table_name)
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await schema_handler.get_table_schema(table_name, ctx, output_format)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "get_table_schema", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "get_table_schema", False, duration, error=str(e))
         raise
 
@@ -421,18 +422,18 @@ async def list_tables_tool(ctx: Context, output_format: str = "json") -> str:
     if request_logger:
         await request_logger.log_request(ctx, "list_tables_tool")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await tables_handler.list_tables(ctx, output_format)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_tables_tool", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_tables_tool", False, duration, error=str(e))
         raise
 
@@ -449,18 +450,18 @@ async def list_databases_tool(ctx: Context, output_format: str = "json") -> str:
     if request_logger:
         await request_logger.log_request(ctx, "list_databases_tool")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await schema_handler.list_databases(ctx, output_format)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_databases_tool", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "list_databases_tool", False, duration, error=str(e))
         raise
 
@@ -476,18 +477,18 @@ async def server_info_tool(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "server_info")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await admin_handler.get_server_info(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "server_info", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "server_info", False, duration, error=str(e))
         raise
 
@@ -499,18 +500,18 @@ async def cache_stats_tool(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "cache_stats")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await admin_handler.cache_stats(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "cache_stats", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "cache_stats", False, duration, error=str(e))
         raise
 
@@ -522,18 +523,18 @@ async def clear_cache_tool(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "clear_cache")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await admin_handler.clear_cache(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "clear_cache", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "clear_cache", False, duration, error=str(e))
         raise
 
@@ -545,18 +546,18 @@ async def connection_pool_stats_tool(ctx: Context) -> str:
     if request_logger:
         await request_logger.log_request(ctx, "connection_pool_stats")
     
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.utcnow()
     try:
         result = await admin_handler.connection_pool_stats(ctx)
         
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "connection_pool_stats", True, duration)
         
         return result
     except Exception as e:
         if request_logger:
-            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            duration = (datetime.utcnow() - start_time).total_seconds()
             await request_logger.log_response(ctx, "connection_pool_stats", False, duration, error=str(e))
         raise
 

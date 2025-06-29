@@ -145,23 +145,27 @@ class TestBasicIntegration:
         import server
         
         # Check for key functions
-        assert hasattr(server, 'initialize_server')
-        assert hasattr(server, 'cleanup_server')
-        assert hasattr(server, 'create_mcp_server')
-        assert hasattr(server, 'health_endpoint')
+        assert hasattr(server, 'ensure_initialized')
+        assert hasattr(server, 'cleanup_components')
         assert hasattr(server, 'main')
+        
+        # Check for MCP server instance
+        assert hasattr(server, 'mcp')
+        
+        # Check for global state variables
+        assert hasattr(server, 'app_config')
+        assert hasattr(server, 'db_manager')
     
     @pytest.mark.asyncio
     async def test_mcp_server_creation(self):
         """Test MCP server creation."""
         import server
         
-        mcp_server = server.create_mcp_server()
-        
-        assert mcp_server is not None
+        # Check that the MCP server instance exists
+        assert server.mcp is not None
         # Test that it's a FastMCP instance
         from fastmcp import FastMCP
-        assert isinstance(mcp_server, FastMCP)
+        assert isinstance(server.mcp, FastMCP)
 
 
 if __name__ == "__main__":

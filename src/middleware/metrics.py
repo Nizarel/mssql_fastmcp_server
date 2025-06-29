@@ -5,7 +5,7 @@ import asyncio
 from typing import Dict, Any, Callable, Optional
 from dataclasses import dataclass, field
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class MetricsCollector:
     def __init__(self):
         self.metrics: Dict[str, OperationMetrics] = defaultdict(OperationMetrics)
         self._lock = asyncio.Lock()
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
     
     async def record_operation(
         self,
@@ -51,7 +51,7 @@ class MetricsCollector:
             metric = self.metrics[operation]
             metric.count += 1
             metric.total_time += duration
-            metric.last_execution = datetime.utcnow()
+            metric.last_execution = datetime.now(timezone.utc)
             
             if not success:
                 metric.errors += 1
@@ -60,7 +60,7 @@ class MetricsCollector:
     async def get_metrics(self) -> Dict[str, Any]:
         """Get all metrics."""
         async with self._lock:
-            uptime = (datetime.utcnow() - self.start_time).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self.start_time).total_seconds()
             
             return {
                 "uptime_seconds": round(uptime, 2),
@@ -92,7 +92,7 @@ class MetricsCollector:
                 "total_execution_time": round(total_time, 3),
                 "avg_execution_time": round(total_time / total_operations, 3) if total_operations > 0 else 0,
                 "operations_count": len(self.metrics),
-                "uptime_seconds": round((datetime.utcnow() - self.start_time).total_seconds(), 2)
+                "uptime_seconds": round((datetime.now(timezone.utc) - self.start_time).total_seconds(), 2)
             }
     
     def create_middleware(self):
