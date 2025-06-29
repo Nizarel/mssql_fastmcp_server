@@ -1,0 +1,38 @@
+{
+  "database": {
+    "server": "staging-sql-server",
+    "database": "StagingDB",
+    "username": "${DB_USERNAME}",
+    "password": "${DB_PASSWORD}",
+    "port": 1433,
+    "encrypt": true,
+    "trust_server_certificate": false
+  },
+  "server": {
+    "transport": "sse",
+    "sse_port": 8080,
+    "max_rows": 5000,
+    "query_timeout": 60,
+    "max_concurrent_queries": 10,
+    "enable_caching": true,
+    "enable_rate_limiting": true,
+    "enable_health_checks": true,
+    "enable_streaming": true,
+    "default_output_format": "json",
+    "log_level": "INFO",
+    "connection_pool": {
+      "min_connections": 5,
+      "max_connections": 20,
+      "connection_timeout": 30,
+      "pool_timeout": 30
+    },
+    "cache": {
+      "max_size": 500,
+      "ttl_seconds": 600
+    },
+    "rate_limit": {
+      "requests_per_minute": 120,
+      "burst_limit": 20
+    }
+  }
+}
