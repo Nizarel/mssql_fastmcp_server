@@ -1,0 +1,38 @@
+{
+  "database": {
+    "server": "${DB_SERVER}",
+    "database": "${DB_DATABASE}",
+    "username": "${DB_USERNAME}",
+    "password": "${DB_PASSWORD}",
+    "port": 1433,
+    "encrypt": true,
+    "trust_server_certificate": false
+  },
+  "server": {
+    "transport": "sse",
+    "sse_port": 8080,
+    "max_rows": 10000,
+    "query_timeout": 120,
+    "max_concurrent_queries": 20,
+    "enable_caching": true,
+    "enable_rate_limiting": true,
+    "enable_health_checks": true,
+    "enable_streaming": true,
+    "default_output_format": "json",
+    "log_level": "WARNING",
+    "connection_pool": {
+      "min_connections": 10,
+      "max_connections": 50,
+      "connection_timeout": 30,
+      "pool_timeout": 30
+    },
+    "cache": {
+      "max_size": 1000,
+      "ttl_seconds": 1800
+    },
+    "rate_limit": {
+      "requests_per_minute": 300,
+      "burst_limit": 50
+    }
+  }
+}
