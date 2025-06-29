@@ -1,0 +1,55 @@
+# GitHub Actions Workflow for Automated Deployment
+name: Deploy MSSQL MCP Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements-dev.txt
+        pip install -r src/requirements.txt
+    
+    - name: Run tests
+      run: |
+        python tests/run_comprehensive_tests.py
+    
+    - name: Build Docker image
+      run: |
+        docker build -t mssql-mcp-server ./src
+    
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Login to Azure Container Registry
+      run: |
+        echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+    
+    - name: Build and push
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/mssql-mcp-server:${{ github.sha }} ./src
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/mssql-mcp-server:${{ github.sha }}
+    
+    - name: Deploy to Azure Container Apps
+      run: |
+        az containerapp update \
+          --name mssql-mcp-server \
+          --resource-group rg-mcp-servers \
+          --image ${{ secrets.ACR_LOGIN_SERVER }}/mssql-mcp-server:${{ github.sha }}

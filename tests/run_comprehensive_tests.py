@@ -102,7 +102,7 @@ def main():
     
     # 5. Server structure validation
     success, duration = run_command(
-        "PYTHONPATH=src python -c \"import server; print('✅ Server module loads successfully'); mcp = server.create_mcp_server(); print('✅ MCP server creates successfully')\"",
+        "PYTHONPATH=src python -c \"import server; print('✅ Server module loads successfully'); print('✅ MCP server instance:', type(server.mcp).__name__)\"",
         "Server Structure Validation"
     )
     test_results.append(("Server Structure", success))
@@ -110,7 +110,7 @@ def main():
     
     # 6. Configuration loading test
     success, duration = run_command(
-        "PYTHONPATH=src python -c \"from config import load_config; config = load_config(config_file='configs/test.json'); print('✅ Configuration loads successfully')\"",
+        "PYTHONPATH=src python -c \"from config import load_config; config = load_config(config_file='src/configs/test.json'); print('✅ Configuration loads successfully')\"",
         "Configuration Loading"
     )
     test_results.append(("Configuration", success))
