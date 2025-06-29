@@ -5,7 +5,7 @@ from datetime import datetime
 from fastmcp import Context
 
 from .base import BaseHandler
-from ..core.database import DatabaseError
+from core.database import DatabaseError
 
 
 class HealthHandler(BaseHandler):

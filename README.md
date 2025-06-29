@@ -114,13 +114,6 @@ Then in `claude_desktop_config.json`:
 }
 ```
 
-### Development
-
-```bash
-git clone https://github.com/RichardHan/mssql_mcp_server.git
-cd mssql_mcp_server
-pip install -e .
-```
 
 ## 🔧 Development & Testing
 

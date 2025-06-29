@@ -5,8 +5,8 @@ from datetime import datetime
 from fastmcp import Context
 
 from .base import BaseHandler
-from ..config import OutputFormat
-from ..core.database import DatabaseError, SecurityError
+from config import OutputFormat
+from core.database import DatabaseError, SecurityError
 
 
 class QueryHandler(BaseHandler):

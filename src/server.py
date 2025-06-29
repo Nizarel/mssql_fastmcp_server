@@ -24,23 +24,23 @@ from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP, Context
 
-from .config import (
+from config import (
     AppConfig, load_config, get_config, TransportType, OutputFormat, LogLevel
 )
-from .core.database import DatabaseManager
-from .core.connection_pool import ConnectionPool
-from .core.rate_limiter import RateLimiter
-from .core.cache import LRUCache
-from .core.response_formatter import MCPResponse
+from core.database import DatabaseManager
+from core.connection_pool import ConnectionPool
+from core.rate_limiter import RateLimiter
+from core.cache import LRUCache
+from core.response_formatter import MCPResponse
 
 # Import all handlers
-from .handlers import (
+from handlers import (
     HealthHandler, TablesHandler, QueryHandler, 
     SchemaHandler, AdminHandler
 )
 
 # Import middleware
-from .middleware import metrics_collector, StructuredLogger, RequestLogger
+from middleware import metrics_collector, StructuredLogger, RequestLogger
 
 # Global application state
 app_config: Optional[AppConfig] = None

@@ -5,8 +5,8 @@ import asyncio
 
 def main():
     """Main entry point for the package."""
-    from . import server
-    asyncio.run(server.main())
+    from server import main as server_main
+    asyncio.run(server_main())
 
 
 # Package metadata

@@ -75,7 +75,7 @@ def extract_table_name_from_query(query: str) -> Optional[str]:
 
 def get_output_format_from_context(ctx: Context):
     """Extract output format from context or use default."""
-    from ..config import OutputFormat
+    from config import OutputFormat
     
     if hasattr(ctx, 'params') and isinstance(ctx.params, dict):
         format_str = ctx.params.get('output_format', 'json')

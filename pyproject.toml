@@ -33,7 +33,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-mssql_mcp_server = "mssql_mcp_server:main"
+mssql_mcp_server = "src:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mssql_mcp_server"]
+packages = ["src"]

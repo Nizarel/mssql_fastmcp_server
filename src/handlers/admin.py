@@ -5,7 +5,7 @@ from datetime import datetime
 from fastmcp import Context
 
 from .base import BaseHandler
-from ..config import OutputFormat
+from config import OutputFormat
 
 
 class AdminHandler(BaseHandler):

@@ -5,8 +5,8 @@ from datetime import datetime
 from fastmcp import Context
 
 from .base import BaseHandler
-from ..config import OutputFormat
-from ..core.database import DatabaseError, SecurityError
+from config import OutputFormat
+from core.database import DatabaseError, SecurityError
 
 
 class SchemaHandler(BaseHandler):
@@ -52,7 +52,7 @@ class SchemaHandler(BaseHandler):
                     return self.format_response(cached_result, format_enum)
             
             # Validate table name first
-            from ..utils.validators import TableNameValidator
+            from utils.validators import TableNameValidator
             safe_table = TableNameValidator.validate_table_name(table_name)
             
             # Query for table schema

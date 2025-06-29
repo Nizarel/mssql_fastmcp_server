@@ -4,7 +4,7 @@ from typing import Dict, Any
 from fastmcp import Context
 
 from .base import BaseHandler
-from ..core.database import DatabaseError, SecurityError
+from core.database import DatabaseError, SecurityError
 
 
 class TablesHandler(BaseHandler):

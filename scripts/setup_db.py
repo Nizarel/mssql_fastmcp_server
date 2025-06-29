@@ -13,8 +13,8 @@ from pathlib import Path
 # Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mssql_mcp_server.config import load_config
-from mssql_mcp_server.core.database import DatabaseManager
+from config import load_config
+from core.database import DatabaseManager
 
 
 # Sample setup queries

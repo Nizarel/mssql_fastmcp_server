@@ -7,7 +7,7 @@ import concurrent.futures
 from typing import List, Dict, Any, Tuple, Optional
 from contextlib import asynccontextmanager
 import pymssql
-from ..config import DatabaseConfig
+from config import DatabaseConfig
 
 logger = logging.getLogger(__name__)
 

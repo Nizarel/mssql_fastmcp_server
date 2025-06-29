@@ -3,8 +3,8 @@
 from typing import Optional, Dict, Any
 from fastmcp import Context
 
-from ..config import AppConfig, OutputFormat
-from ..core.response_formatter import MCPResponse
+from config import AppConfig, OutputFormat
+from core.response_formatter import MCPResponse
 
 
 class BaseHandler:
@@ -46,7 +46,7 @@ class BaseHandler:
     
     def format_response(self, data: Any, output_format: OutputFormat, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Format response based on requested output format."""
-        from ..core.response_formatter import TableFormatter
+        from core.response_formatter import TableFormatter
         
         response = MCPResponse(
             success=True,

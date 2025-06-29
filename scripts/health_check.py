@@ -13,7 +13,7 @@ from pathlib import Path
 # Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from mssql_mcp_server.server import health_endpoint, initialize_server
+from server import health_endpoint, initialize_server
 
 
 async def main():
